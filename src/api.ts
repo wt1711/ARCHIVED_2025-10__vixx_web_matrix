@@ -10,7 +10,7 @@ type LoginResponse = {
 };
 
 export async function apiLogin(username: string, password: string): Promise<LoginResponse> {
-  const res = await fetch(`${APP_URL}api/auth/login/`, {
+  const res = await fetch(`${APP_URL}api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
@@ -23,10 +23,10 @@ export async function apiLogin(username: string, password: string): Promise<Logi
 }
 
 export async function apiCheckInstagram(token: string): Promise<{ isInstagramConnected: boolean }> {
-  const res = await fetch(`${APP_URL}api/instagram/`, {
+  const res = await fetch(`${APP_URL}api/instagram`, {
     method: 'GET',
     headers: {
-      'Content-Type': 'application/json',
+      Accept: 'application/json',
       Authorization: `Bearer ${token}`,
     },
   });
@@ -52,7 +52,7 @@ export type InstagramConnectPayload = {
 };
 
 export async function apiConnectInstagram(token: string, payload: InstagramConnectPayload): Promise<{ success: boolean; message: string }> {
-  const res = await fetch(`${APP_URL}api/instagram/connect/`, {
+  const res = await fetch(`${APP_URL}api/instagram/connect`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

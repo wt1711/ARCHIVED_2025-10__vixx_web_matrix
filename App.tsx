@@ -11,7 +11,7 @@ import {
   ScrollView,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import CookieManager from '@react-native-cookies/cookies';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -256,11 +256,12 @@ export default function App() {
   },[cookies]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefreshInstagram} />}
-      >
+    <SafeAreaProvider>
+      <SafeAreaView edges={['top','bottom']} style={styles.container}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefreshInstagram} />}
+        >
         {!token ? (
           <>
             <Text style={styles.title}>Login</Text>
@@ -307,57 +308,62 @@ export default function App() {
         animationType="slide"
         presentationStyle="fullScreen"
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.closeButton} onPress={handleCloseWebView} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-            {syncReady && !!token ? (
-              <TouchableOpacity style={[styles.extractButton, isConnecting && styles.buttonDisabled]} onPress={handleConnectInstagram} disabled={isConnecting}>
-                <Text style={styles.extractButtonText}>{isConnecting ? 'Syncing your instagram…' : 'Sync Instagram'}</Text>
+        <SafeAreaProvider>
+          <SafeAreaView edges={['top','bottom']} style={styles.modalContainer}>
+            <View style={styles.header}>
+              <TouchableOpacity style={styles.closeButton} onPress={handleCloseWebView} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
-            ) : null}
-          </View>
-          
-          <WebView
-            ref={webViewRef}
-            source={{ uri: 'https://www.instagram.com/accounts/login/' }}
-            style={styles.webview}
-            onNavigationStateChange={onNavigationStateChange}
-            onMessage={onMessage}
-            javaScriptEnabled={true}
-            domStorageEnabled={true}
-            startInLoadingState={true}
-            scalesPageToFit={true}
-            userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
-          />
-        </SafeAreaView>
+              {syncReady && !!token ? (
+                <TouchableOpacity style={[styles.extractButton, isConnecting && styles.buttonDisabled]} onPress={handleConnectInstagram} disabled={isConnecting}>
+                  <Text style={styles.extractButtonText}>{isConnecting ? 'Syncing your instagram…' : 'Sync Instagram'}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            
+            <WebView
+              ref={webViewRef}
+              source={{ uri: 'https://www.instagram.com/accounts/login/' }}
+              style={styles.webview}
+              onNavigationStateChange={onNavigationStateChange}
+              onMessage={onMessage}
+              javaScriptEnabled={true}
+              domStorageEnabled={true}
+              startInLoadingState={true}
+              scalesPageToFit={true}
+              userAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
+            />
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
-
+      
       <Modal
         visible={showDMWebView}
         animationType="slide"
         presentationStyle="fullScreen"
         onRequestClose={() => setShowDMWebView(false)}
       >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.header}>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setShowDMWebView(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          <WebView
-            source={{ uri: `${MATRIX_WEB_URL}auth-check/?token=${token}` }}
-            style={styles.webview}
-            javaScriptEnabled
-            domStorageEnabled
-            startInLoadingState
-            scalesPageToFit
-          />
-        </SafeAreaView>
+        <SafeAreaProvider>
+          <SafeAreaView edges={['top','bottom']} style={styles.modalContainer}>
+            <View style={styles.header}>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setShowDMWebView(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <WebView
+              source={{ uri: `${MATRIX_WEB_URL}auth-check/?token=${token}` }}
+              style={styles.webview}
+              javaScriptEnabled
+              domStorageEnabled
+              startInLoadingState
+              scalesPageToFit
+            />
+          </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
 
     </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
