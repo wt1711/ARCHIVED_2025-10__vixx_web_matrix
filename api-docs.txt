@@ -1,0 +1,46 @@
+APP_URL env var: https://103.232.121.75/
+
+
+API login: 
+- URL: {APP_URL}api/auth/login/
+- Method: POST
+- payload: {
+    "username": string;
+    "password": string;
+}
+- Success response: {
+    "message": "Login successful",
+    "user": {
+        "username": string,
+        "accessToken": string
+    }
+}
+
+
+API instagram check: 
+- URL: {APP_URL}api/instagram/
+- Method: GET
+- Success response: {
+    "isInstagramConnected": boolean
+}
+
+API connect instagram: 
+- URL: {APP_URL}api/instagram/connect/
+- Method: POST
+- payload: {
+    "rur": string,
+    "ps_n": string,
+    "ps_l": string,
+    "ds_user_id": string,
+    "mid": string,
+    "ig_did": string,
+    "sessionid": string,
+    "datr": string,
+    "dpr": string,
+    "wd": string,
+    "csrftoken": string,
+}
+- Success response: {
+    "success": true,
+    "message": "Instagram connected"
+}
