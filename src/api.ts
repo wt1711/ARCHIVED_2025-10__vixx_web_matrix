@@ -6,7 +6,14 @@ export const MATRIX_WEB_URL = 'https://lovebird2025.vercel.app/';
 
 type LoginResponse = {
   message: string;
-  user: { username: string; accessToken: string };
+  userId?: string;
+  deviceId?: string;
+  accessToken?: string;
+  matrixHost?: string;
+  user: { 
+    username: string; 
+    accessToken: string;
+  };
 };
 
 export async function apiLogin(username: string, password: string): Promise<LoginResponse> {

@@ -15,16 +15,27 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { WebView } from 'react-native-webview';
 import CookieManager from '@react-native-cookies/cookies';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { apiLogin, apiCheckInstagram, apiConnectInstagram, MATRIX_WEB_URL } from './src/api';   
+import { apiLogin, apiCheckInstagram, apiConnectInstagram } from './src/api';
+import { DMListScreen } from './src/screens/DMListScreen';
+import { DMDetailScreen } from './src/screens/DMDetailScreen';   
+
+type Screen = 'home' | 'dm-list' | 'dm-detail';
 
 export default function App() {
   const [showWebView, setShowWebView] = useState(false);
-  const [showDMWebView, setShowDMWebView] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [cookies, setCookies] = useState<any>(null);
   const webViewRef = useRef<WebView>(null);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [token, setToken] = useState<string | null>(null);
+  const [matrixCredentials, setMatrixCredentials] = useState<{
+    userId?: string;
+    deviceId?: string;
+    accessToken?: string;
+    matrixHost?: string;
+  } | null>(null);
   const [isInstagramConnected, setIsInstagramConnected] = useState<boolean | null>(null);
   const [loadingCheck, setLoadingCheck] = useState(false);
   const [syncReady, setSyncReady] = useState(false);
@@ -42,11 +53,19 @@ export default function App() {
   };
 
   useEffect(() => {
-    // Load token from storage on start
+    // Load token and matrix credentials from storage on start
     (async () => {
       const saved = await AsyncStorage.getItem('accessToken');
       if (saved) {
         setToken(saved);
+      }
+      const savedMatrix = await AsyncStorage.getItem('matrixCredentials');
+      if (savedMatrix) {
+        try {
+          setMatrixCredentials(JSON.parse(savedMatrix));
+        } catch (e) {
+          console.error('Failed to parse matrix credentials', e);
+        }
       }
     })();
   }, []);
@@ -181,9 +200,26 @@ export default function App() {
         return;
       }
       const res = await apiLogin(username, password);
-      const accessToken = res.user.accessToken;
+      const accessToken = res.accessToken || res.user.accessToken;
       await AsyncStorage.setItem('accessToken', accessToken);
       setToken(accessToken);
+      
+      // Store Matrix credentials if provided (check top level first, then user object)
+      const userId = res.userId;
+      const deviceId = res.deviceId;
+      const matrixHost = res.matrixHost;
+      
+      if (userId && deviceId && matrixHost && accessToken) {
+        const matrixCreds = {
+          userId,
+          deviceId,
+          accessToken,
+          matrixHost,
+        };
+        await AsyncStorage.setItem('matrixCredentials', JSON.stringify(matrixCreds));
+        setMatrixCredentials(matrixCreds);
+      }
+      
       Alert.alert('Login success', `Welcome ${res.user.username}`);
     } catch (e: any) {
       console.error('login failed', e?.message || e);
@@ -216,7 +252,7 @@ export default function App() {
         setIsInstagramConnected(true);
         setSyncReady(false);
         setShowWebView(false);
-        void apiCheckInstagram(token);
+        apiCheckInstagram(token).catch(console.error);
       } else {
         Alert.alert('Failed', res.message || 'Unable to connect Instagram');
       }
@@ -245,7 +281,21 @@ export default function App() {
   };
 
   const handleOpenDM = () => {
-    setShowDMWebView(true);
+    setCurrentScreen('dm-list');
+  };
+
+  const handleSelectRoom = (roomId: string) => {
+    setSelectedRoomId(roomId);
+    setCurrentScreen('dm-detail');
+  };
+
+  const handleBackFromDM = () => {
+    if (currentScreen === 'dm-detail') {
+      setCurrentScreen('dm-list');
+      setSelectedRoomId(null);
+    } else {
+      setCurrentScreen('home');
+    }
   };
 
   useEffect(() => {
@@ -254,6 +304,26 @@ export default function App() {
       setSyncReady(true);
     }
   },[cookies]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Show DM screens as full screen overlays
+  if (currentScreen === 'dm-list' || currentScreen === 'dm-detail') {
+    return (
+      <SafeAreaProvider>
+        {currentScreen === 'dm-list' && (
+          <DMListScreen
+            onSelectRoom={handleSelectRoom}
+            onClose={handleBackFromDM}
+          />
+        )}
+        {currentScreen === 'dm-detail' && selectedRoomId && (
+          <DMDetailScreen
+            roomId={selectedRoomId}
+            onBack={handleBackFromDM}
+          />
+        )}
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
@@ -283,13 +353,18 @@ export default function App() {
             <TouchableOpacity style={[styles.button, isLoggingIn && styles.buttonDisabled]} onPress={handleLoginSubmit} disabled={isLoggingIn}>
               <Text style={styles.buttonText}>{isLoggingIn ? 'Logging in…' : 'Login'}</Text>
             </TouchableOpacity>
-            {isLoggingIn && <ActivityIndicator style={{ marginTop: 8 }} />}
+            {isLoggingIn && <ActivityIndicator style={styles.loadingIndicator} />}
           </>
         ) : (
           <>
             <Text style={styles.title}>Home</Text>
             <Text style={styles.subtitle}>Instagram status: {loadingCheck ? 'Checking…' : isInstagramConnected ? 'Connected' : 'Not Connected'}</Text>
 
+            {matrixCredentials && (
+              <TouchableOpacity style={styles.button} onPress={handleOpenDM}>
+                <Text style={styles.buttonText}>Direct Messages</Text>
+              </TouchableOpacity>
+            )}
             {isInstagramConnected ? (
               <TouchableOpacity style={[styles.button, loadingCheck && styles.buttonDisabled]} onPress={handleOpenDM} disabled={loadingCheck}>
                 <Text style={styles.buttonText}>Open Instagram DM</Text>
@@ -337,31 +412,6 @@ export default function App() {
         </SafeAreaProvider>
       </Modal>
       
-      <Modal
-        visible={showDMWebView}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => setShowDMWebView(false)}
-      >
-        <SafeAreaProvider>
-          <SafeAreaView edges={['top','bottom']} style={styles.modalContainer}>
-            <View style={styles.header}>
-              <TouchableOpacity style={styles.closeButton} onPress={() => setShowDMWebView(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            <WebView
-              source={{ uri: `${MATRIX_WEB_URL}auth-check/?token=${token}` }}
-              style={styles.webview}
-              javaScriptEnabled
-              domStorageEnabled
-              startInLoadingState
-              scalesPageToFit
-            />
-          </SafeAreaView>
-        </SafeAreaProvider>
-      </Modal>
-
     </SafeAreaView>
     </SafeAreaProvider>
   );
@@ -496,5 +546,8 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 5,
     textAlign: 'center',
+  },
+  loadingIndicator: {
+    marginTop: 8,
   },
 });
