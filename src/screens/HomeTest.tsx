@@ -13,8 +13,8 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useRoomList } from '../hooks/useRoomList';
 import { RoomListItem } from '../utils/roomTransformer';
-import { DMListScreen } from './DMListScreen.enhanced';
-import { DMDetailScreen } from './DMDetailScreen.enhanced';
+import { DirectMessageListScreen } from './DirectMessageListScreen';
+import { DirectMessageDetailScreen } from './DirectMessageDetailScreen';
 
 
 export default function HomeTest() {
@@ -34,10 +34,9 @@ export default function HomeTest() {
     <SafeAreaProvider>
       <SafeAreaView edges={['top','bottom']} style={styles.container}>
         <ScrollView
-          contentContainerStyle={styles.content}
         >
         {!token ? (
-          <>
+          <View style={styles.content}>
             <Text style={styles.title}>Login</Text>
             <Text style={styles.subtitle}>Enter credentials to continue</Text>
             <TextInput
@@ -58,15 +57,15 @@ export default function HomeTest() {
               <Text style={styles.buttonText}>{isLoggingIn ? 'Logging in…' : 'Login'}</Text>
             </TouchableOpacity>
             {isLoggingIn && <ActivityIndicator style={styles.loadingIndicator} />}
-          </>
+          </View>
         ) : 
           selectedRoomId ? (
-            <DMDetailScreen
+            <DirectMessageDetailScreen
               roomId={selectedRoomId}
               onBack={() => setSelectedRoomId(null)}
             />
           ) : (
-            <DMListScreen onSelectRoom={setSelectedRoomId} onClose={() => {}} />
+            <DirectMessageListScreen onSelectRoom={setSelectedRoomId} onClose={() => {}} />
           )}
       </ScrollView>
       

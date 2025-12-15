@@ -3,6 +3,9 @@
  * These are automatically included in Expo but need to be manually set up in bare React Native
  */
 
+// Declare global for TypeScript
+declare const global: any;
+
 // 1. Crypto polyfill - MUST be imported first
 import 'react-native-get-random-values';
 
@@ -14,8 +17,8 @@ global.Buffer = Buffer;
 import '@stardazed/streams-text-encoding';
 
 // 4. Promise.withResolvers polyfill for Hermes (ES2024 feature used by matrix-js-sdk)
-if (typeof Promise.withResolvers !== 'function') {
-  Promise.withResolvers = function <T>() {
+if (typeof (Promise as any).withResolvers !== 'function') {
+  (Promise as any).withResolvers = function <T>() {
     let resolve: (value: T | PromiseLike<T>) => void;
     let reject: (reason?: unknown) => void;
     const promise = new Promise<T>((res, rej) => {
@@ -28,13 +31,12 @@ if (typeof Promise.withResolvers !== 'function') {
 
 // 5. Process polyfill (needed by some Node.js modules)
 if (typeof global.process === 'undefined') {
-  // @ts-ignore
   global.process = {
     env: {},
     version: '',
     versions: {},
     platform: 'react-native',
-    nextTick: (fn: Function) => setTimeout(fn, 0),
+    nextTick: (fn: () => void) => setTimeout(fn, 0),
   };
 }
 
