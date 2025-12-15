@@ -70,11 +70,6 @@ export function DMListScreen({ onSelectRoom, onClose }: DMListScreenProps) {
       
       // Filter for direct message rooms (rooms with only 2 members)
       const dmRooms: DMRoomItem[] = allRooms
-        .filter((room: Room) => {
-          const members = room.getJoinedMembers();
-          // Direct messages typically have 2 members (you + the other person)
-          return members.length === 2 && !room.isSpaceRoom();
-        })
         .map((room: Room) => {
           const members = room.getJoinedMembers();
           const otherMember = members.find(m => m.userId !== client.getUserId());

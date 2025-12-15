@@ -25,7 +25,43 @@ react {
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
-    // nodeExecutableAndArgs = ["node"]
+    def nodeExecutable = System.getenv("NODE_BINARY") ?: {
+        // Check local.properties first
+        def localProperties = new File(rootProject.projectDir, "local.properties")
+        if (localProperties.exists()) {
+            def properties = new Properties()
+            localProperties.withInputStream { properties.load(it) }
+            def nodePath = properties.getProperty("node.executable")
+            if (nodePath && new File(nodePath).exists()) {
+                return nodePath
+            }
+        }
+        // Try to find node using which command
+        try {
+            def process = ["/bin/sh", "-c", "which node"].execute()
+            process.waitFor()
+            def nodePath = process.text.trim()
+            if (nodePath && new File(nodePath).exists()) {
+                return nodePath
+            }
+        } catch (Exception e) {
+            // Fall through to nvm check
+        }
+        // Try common nvm locations
+        def nvmDir = new File(System.getProperty("user.home"), ".nvm/versions/node")
+        if (nvmDir.exists() && nvmDir.isDirectory()) {
+            def versions = nvmDir.listFiles()?.findAll { it.isDirectory() }?.sort { it.name }
+            if (versions) {
+                def latestVersion = versions.last()
+                def nvmNode = new File(latestVersion, "bin/node")
+                if (nvmNode.exists()) {
+                    return nvmNode.absolutePath
+                }
+            }
+        }
+        return "node"
+    }()
+    nodeExecutableAndArgs = [nodeExecutable]
     //
     //   The command to run when bundling. By default is 'bundle'
     // bundleCommand = "ram-bundle"
