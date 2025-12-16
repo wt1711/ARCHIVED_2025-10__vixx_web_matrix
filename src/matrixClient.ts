@@ -21,14 +21,13 @@ const fixUrlString = (urlString: string): string => {
   // Match: /path/to/resource/?query -> /path/to/resource?query
   // Match: /path/to/resource/#fragment -> /path/to/resource#fragment
   // This regex removes one or more trailing slashes before ?, #, or end of string
-  const trailingList = ['login', 'filter', 'sync', 'capabilities', 'versions'];
+  const allowedTrailingList: string[] = ['pushrules'];
   const fixedUrlString = urlString.replace(/\/+(\?|#|$)/g, '$1');
   const fixedPath = fixedUrlString.split('?')[0];
-  console.log('fixedUrlString', urlString,fixedUrlString, trailingList.some(trailing => fixedPath.endsWith(trailing)));
-  if (trailingList.some(trailing => fixedPath.endsWith(trailing))) {
-      return fixedUrlString;
+  if (allowedTrailingList.some(trailing => fixedPath.endsWith(trailing))) {
+      return urlString;
   }
-  return urlString;
+  return fixedUrlString;
 }
 
 const fetchFn = (
@@ -38,16 +37,13 @@ const fetchFn = (
   let fixedUrl: string | Request;
 
   if (typeof url === 'string') {
-    console.log('string');
     // Remove trailing slash from string URL pathname
     fixedUrl = fixUrlString(url);
   } else if (url instanceof URL) {
-    console.log('url instanceof URL');
     // Convert to string and fix it
     const urlString = url.toString();
     fixedUrl = fixUrlString(urlString);
   } else if (url instanceof Request) {
-    console.log('url instanceof Request');
     // Create a new Request with fixed URL
     const requestUrl = fixUrlString(url.url);
     // Merge options from the original request with new options
@@ -65,7 +61,6 @@ const fetchFn = (
     // Fallback to original
     fixedUrl = url as string;
   }
-  console.log('fixedUrl', fixedUrl, url);
 
   return fetch(fixedUrl, options);
 }

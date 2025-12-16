@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Room, MatrixEvent, RoomEvent, Direction } from 'matrix-js-sdk';
 import { getMatrixClient } from '../../matrixClient';
+import { getRoomAvatarUrl, messageEventOnly } from '../../utils/room';
 
 type MessageItem = {
   eventId: string;
@@ -19,6 +20,12 @@ type MessageItem = {
   msgtype?: string;
   isOwn: boolean;
   avatarUrl?: string;
+  imageUrl?: string;
+  imageInfo?: {
+    w?: number;
+    h?: number;
+    mimetype?: string;
+  };
 };
 
 type RoomTimelineProps = {
@@ -43,13 +50,26 @@ export function RoomTimeline({ room, eventId }: RoomTimelineProps) {
     const senderMember = room.getMember(sender);
     const senderName = senderMember?.name || sender.split('@')[0]?.split(':')[0] || 'Unknown';
     const isOwn = sender === mx.getUserId();
-    const avatarUrl = senderMember?.getAvatarUrl(mx.getHomeserverUrl(), 96, 96, 'crop', true, false);
+    const avatarUrl = getRoomAvatarUrl(mx, room, 96, true);
+
+    if (!messageEventOnly(event)) return null;
 
     let contentText = '';
+    let imageUrl: string | undefined;
+    let imageInfo: { w?: number; h?: number; mimetype?: string } | undefined;
+
     if (content.msgtype === 'm.text') {
       contentText = content.body || '';
     } else if (content.msgtype === 'm.image') {
-      contentText = '📷 Image';
+      // Extract image URL from content
+      const mxcUrl = content.file?.url || content.url;
+      if (mxcUrl && typeof mxcUrl === 'string') {
+        // Convert MXC URL to HTTP with authentication
+        imageUrl = mx.mxcUrlToHttp(mxcUrl, 400, 400, 'scale', undefined, false, true) || undefined;
+        imageUrl = `${imageUrl}&access_token=${mx.getAccessToken()}`;
+        imageInfo = content.info || content.file?.info;
+      }
+      contentText = content.body || '📷 Image';
     } else if (content.msgtype === 'm.video') {
       contentText = '🎥 Video';
     } else if (content.msgtype === 'm.file') {
@@ -66,35 +86,54 @@ export function RoomTimeline({ room, eventId }: RoomTimelineProps) {
       timestamp: event.getTs(),
       msgtype: content.msgtype,
       isOwn,
-      avatarUrl: avatarUrl ? mx.mxcUrlToHttp(avatarUrl) || undefined : undefined,
+      avatarUrl: avatarUrl || undefined,
+      imageUrl,
+      imageInfo,
     };
   }, [mx, room]);
 
-  const loadMessages = useCallback(() => {
-    if (!mx || !room) return;
-
+  const getEventFromMessage = () => {
     const timeline = room.getLiveTimeline();
     const events = timeline.getEvents();
     
     const messageItems: MessageItem[] = events
       .map(mapEventToMessage)
       .filter((item): item is MessageItem => item !== null);
+    return {messageItems, timeline};
+  }
 
+  const loadMessages = useCallback(async () => {
+    if (!mx || !room) return;
+    
+    let {messageItems, timeline} = getEventFromMessage();
+
+    if (messageItems.length < 10 && isInitialLoad.current) {
+      await mx.paginateEventTimeline(timeline, {
+        backwards: true,
+        limit: 50, // Load 10 messages at a time
+      });
+      const newData = getEventFromMessage();
+      messageItems = newData.messageItems;
+      timeline = newData.timeline;
+    }
+    
     setMessages(messageItems);
     setLoading(false);
 
     // Check if we can paginate backwards
-    const paginationToken = timeline.getPaginationToken(Direction.Backward);
-    setCanLoadMore(!!paginationToken);
+    setTimeout(() => {
+      const paginationToken = timeline.getPaginationToken(Direction.Backward);
+      setCanLoadMore(!!paginationToken);
+    }, 600);
 
     // Scroll to bottom after initial load
     if (isInitialLoad.current && messageItems.length > 0) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: false });
         isInitialLoad.current = false;
-      }, 100);
+      }, 500);
     }
-  }, [mx, room, mapEventToMessage]);
+  }, [mx, room, mapEventToMessage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMoreMessages = useCallback(async () => {
     if (!mx || !room || loadingMore || !canLoadMore) return;
@@ -129,7 +168,7 @@ export function RoomTimeline({ room, eventId }: RoomTimelineProps) {
           if (newIndex >= 0) {
             flatListRef.current?.scrollToIndex({ index: newIndex, animated: false });
           }
-        }, 100);
+        }, 500);
       }
     } catch (error) {
       console.error('Failed to load more messages:', error);
@@ -148,7 +187,7 @@ export function RoomTimeline({ room, eventId }: RoomTimelineProps) {
     loadMessages();
 
     // Listen for new events
-    const onRoomTimeline = (event: MatrixEvent, roomObj: Room | null) => {
+    const onRoomTimeline = (event: MatrixEvent, roomObj: Room | undefined) => {
       if (roomObj?.roomId === room.roomId) {
         loadMessages();
         // Auto-scroll to bottom on new message (only if user is at bottom)
@@ -178,6 +217,8 @@ export function RoomTimeline({ room, eventId }: RoomTimelineProps) {
       }
     }
   }, [eventId, messages]);
+
+  console.log('messages', messages.length, loading, loadingMore, canLoadMore);
 
   // All hooks must be called before any conditional returns
   const handleScroll = useCallback((event: any) => {
@@ -241,14 +282,46 @@ export function RoomTimeline({ room, eventId }: RoomTimelineProps) {
           {!item.isOwn && (
             <Text style={styles.senderName}>{item.senderName}</Text>
           )}
-          <Text
-            style={[
-              styles.messageText,
-              item.isOwn ? styles.messageTextOwn : styles.messageTextOther,
-            ]}
-          >
-            {item.content}
-          </Text>
+          
+          {/* Render image if it's an image message */}
+          {item.msgtype === 'm.image' && item.imageUrl ? (
+            <View style={styles.imageContainer}>
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={[
+                  styles.messageImage,
+                  item.imageInfo?.w && item.imageInfo?.h
+                    ? [
+                        styles.messageImageWithRatio,
+                        { aspectRatio: item.imageInfo.w / item.imageInfo.h, width: 1024 },
+                      ]
+                    : styles.messageImageDefault,
+                ]}
+                resizeMode="contain"
+              />
+              {item.content && item.content === '📷 Image' && (
+                <Text
+                  style={[
+                    styles.messageText,
+                    item.isOwn ? styles.messageTextOwn : styles.messageTextOther,
+                    styles.imageCaption,
+                  ]}
+                >
+                  {item.content}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <Text
+              style={[
+                styles.messageText,
+                item.isOwn ? styles.messageTextOwn : styles.messageTextOther,
+              ]}
+            >
+              {item.content}
+            </Text>
+          )}
+          
           <Text
             style={[
               styles.messageTime,
@@ -335,6 +408,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
+  },
+  imageContainer: {
+    marginBottom: 4,
+  },
+  messageImage: {
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  messageImageWithRatio: {
+    maxWidth: 250,
+    maxHeight: 300,
+  },
+  messageImageDefault: {
+    width: 250,
+    height: 200,
+  },
+  imageCaption: {
+    marginTop: 8,
   },
   messageBubbleOwn: {
     backgroundColor: '#E4405F',

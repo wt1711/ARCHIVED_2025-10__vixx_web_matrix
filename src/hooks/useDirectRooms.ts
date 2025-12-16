@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Room, RoomEvent, ClientEvent } from 'matrix-js-sdk';
 import { getMatrixClient } from '../matrixClient';
 import { useMDirects } from '../utils/mDirectUtils';
+import { IsBotPrivateChat, isRoom } from '../utils/room';
 
 /**
  * Hook to get all direct message rooms
@@ -23,7 +24,7 @@ export const useDirectRooms = () => {
 
     // Filter for direct message rooms using m.direct account data
     // This matches the NextJS implementation exactly
-    const directs = allRooms
+    const directs = allRooms.filter((room) => isRoom(room) && !mDirects.has(room.roomId) && !IsBotPrivateChat(room?.name));
 
     // Sort by last active timestamp (most recent first)
     const sorted = directs.sort((a, b) => {
@@ -32,7 +33,7 @@ export const useDirectRooms = () => {
 
     setDirectRooms(sorted);
     setIsLoading(false);
-  }, [mx, mDirects]);
+  }, [mx, mDirects]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!mx) {

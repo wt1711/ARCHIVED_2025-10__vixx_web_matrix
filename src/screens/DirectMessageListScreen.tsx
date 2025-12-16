@@ -13,10 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Room } from 'matrix-js-sdk';
 import { useDirectRooms } from '../hooks/useDirectRooms';
 import { getMatrixClient } from '../matrixClient';
+import { getRoomAvatarUrl } from '../utils/room';
 
 type DirectMessageListScreenProps = {
   onSelectRoom: (roomId: string) => void;
-  onClose?: () => void;
   onCreateChat?: () => void;
   selectedRoomId?: string;
 };
@@ -33,12 +33,12 @@ type RoomItem = {
 
 export function DirectMessageListScreen({
   onSelectRoom,
-  onClose,
   onCreateChat,
   selectedRoomId,
 }: DirectMessageListScreenProps) {
   const { directRooms, isLoading } = useDirectRooms();
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const mx = getMatrixClient();
 
   const onRefresh = useCallback(() => {
@@ -48,12 +48,10 @@ export function DirectMessageListScreen({
   }, []);
 
   const roomItems: RoomItem[] = useMemo(() => {
+    setLoading(true);
     if (!mx) return [];
 
     return directRooms.map((room: Room) => {
-      const members = room.getJoinedMembers();
-      const myUserId = mx.getUserId();
-      const otherMember = members.find(m => m.userId !== myUserId);
 
       // Use room.name directly - Matrix SDK handles the display name correctly
       // This matches the NextJS implementation
@@ -82,8 +80,9 @@ export function DirectMessageListScreen({
       }
 
       const unreadCount = room.getUnreadNotificationCount() || 0;
-      const avatarUrl = otherMember?.getAvatarUrl(mx.getHomeserverUrl(), 96, 96, 'crop', true, false);
-      const httpAvatarUrl = avatarUrl ? mx.mxcUrlToHttp(avatarUrl) || undefined : undefined;
+      const avatarUrl = getRoomAvatarUrl(mx, room, 96, true);
+
+      setLoading(false);
 
       return {
         roomId: room.roomId,
@@ -92,7 +91,7 @@ export function DirectMessageListScreen({
         lastMessage,
         lastEventTime,
         unreadCount,
-        avatarUrl: httpAvatarUrl,
+        avatarUrl,
       };
     });
   }, [directRooms, mx]);
@@ -154,30 +153,25 @@ export function DirectMessageListScreen({
             <Text style={styles.roomName} numberOfLines={1}>
               {item.name}
             </Text>
-            {item.lastEventTime && (
+            {item.lastEventTime ? (
               <Text style={styles.roomTime}>{formatTime(item.lastEventTime)}</Text>
-            )}
+            ) : null}
           </View>
-          {item.lastMessage && (
+          {item.lastMessage ? (
             <Text style={styles.roomLastMessage} numberOfLines={1}>
               {item.lastMessage}
             </Text>
-          )}
+          ) : null}
         </View>
       </TouchableOpacity>
     );
   };
 
-  if (isLoading) {
+  if (isLoading || loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Direct Messages</Text>
-          {onClose && (
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          )}
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#E4405F" />
@@ -192,27 +186,22 @@ export function DirectMessageListScreen({
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Direct Messages</Text>
         <View style={styles.headerActions}>
-          {onCreateChat && (
+          {onCreateChat ? (
             <TouchableOpacity onPress={onCreateChat} style={styles.createButton}>
               <Text style={styles.createButtonText}>+</Text>
             </TouchableOpacity>
-          )}
-          {onClose && (
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
-            </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       </View>
       {roomItems.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No direct messages yet</Text>
           <Text style={styles.emptySubtext}>Start a conversation to see it here</Text>
-          {onCreateChat && (
+          {onCreateChat ? (
             <TouchableOpacity style={styles.emptyButton} onPress={onCreateChat}>
               <Text style={styles.emptyButtonText}>Create Chat</Text>
             </TouchableOpacity>
-          )}
+          ) : null}
         </View>
       ) : (
         <FlatList

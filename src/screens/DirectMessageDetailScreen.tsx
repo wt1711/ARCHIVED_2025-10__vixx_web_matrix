@@ -1,14 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
   Text,
-  FlatList,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Room, MatrixEvent, RoomEvent } from 'matrix-js-sdk';
@@ -60,7 +58,7 @@ export function DirectMessageDetailScreen({
     loadRoom();
 
     // Listen for room updates
-    const onRoomTimeline = (event: MatrixEvent, roomObj: Room | null) => {
+    const onRoomTimeline = (event: MatrixEvent, roomObj: Room | undefined) => {
       if (roomObj?.roomId === roomId) {
         // Force re-render when new events arrive
         setRoom(prevRoom => {

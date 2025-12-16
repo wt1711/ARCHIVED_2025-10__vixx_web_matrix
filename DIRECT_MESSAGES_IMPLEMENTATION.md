@@ -130,3 +130,4 @@ AI service endpoints:
 - Payment verification is required before accessing AI features
 - The implementation maintains the same functionality as the NextJS version while adapting to React Native patterns
 
+

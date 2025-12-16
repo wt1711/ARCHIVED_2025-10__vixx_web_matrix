@@ -139,6 +139,7 @@ export default function LoginInstagramModal({ open, onClose, onSubmit, isInstagr
 
   useEffect(() => {
     if (cookies && !syncReady) {
+      console.log('handleConnectInstagram');
         handleConnectInstagram();
       setSyncReady(true);
     }

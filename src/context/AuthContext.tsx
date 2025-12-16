@@ -17,6 +17,7 @@ type AuthContextType = {
   isLoading: boolean;
   login: (u: string, p: string) => Promise<void>;
   logout: () => Promise<void>;
+  restoreSession: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -27,30 +28,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const restoreSession = async () => {
+    try {
+      const values = await AsyncStorage.getItem('matrixCredentials');
+      console.log('values:', values);
+      if (!values) {
+        setIsLoading(false);
+        return;
+      }
+
+      const matrixCredentials = JSON.parse(values);
+      if (!matrixCredentials.userId || !matrixCredentials.deviceId || !matrixCredentials.accessToken || !matrixCredentials.matrixHost) {
+        setIsLoading(false);
+        return;
+      }
+
+      await initMatrixClient(matrixCredentials);
+      setMatrixToken(matrixCredentials.accessToken);
+      setUserId(matrixCredentials.userId);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to restore session:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Restore session on mount
   useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        const values = await AsyncStorage.getItem('matrixCredentials');
-        if (!values) {
-          setIsLoading(false);
-          return;
-        }
-
-        const matrixCredentials = JSON.parse(values);
-        if (!matrixCredentials.userId || !matrixCredentials.deviceId || !matrixCredentials.accessToken || !matrixCredentials.matrixHost) {
-          setIsLoading(false);
-          return;
-        }
-
-        await initMatrixClient(matrixCredentials);
-      } catch (error) {
-        console.error('Failed to restore session:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     restoreSession();
   }, []);
 
@@ -63,12 +68,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       
       let matrixClient = getMatrixClient() as MatrixClient;
       if (!matrixClient) {
-        console.log('[Auth] Creating new Matrix client with BASE_URL:', BASE_URL);
         matrixClient = await createMatrixClient(BASE_URL);
       }
       
-      console.log('[Auth] Matrix client homeserver URL:', matrixClient.getHomeserverUrl());
-      console.log('[Auth] Attempting login for user:', username);
       
       // Step 1: Matrix Auth
       const mSession = await matrixClient.login('m.login.password', {
@@ -138,6 +140,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         isLoading,
         login,
         logout,
+        restoreSession,
       }}
     >
       {children}

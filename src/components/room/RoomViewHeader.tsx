@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Image } from 'react-native';
 import { Room } from 'matrix-js-sdk';
 import { getMatrixClient } from '../../matrixClient';
+import { getRoomAvatarUrl } from '../../utils/room';
 
 type PaymentState = {
   isLoading: boolean;
@@ -22,17 +23,14 @@ export function RoomViewHeader({
   paymentState,
 }: RoomViewHeaderProps) {
   const mx = getMatrixClient();
-  const members = room.getJoinedMembers();
-  const myUserId = mx?.getUserId();
-  const otherMember = members.find(m => m.userId !== myUserId);
 
   // Use room.name directly - Matrix SDK handles the display name correctly
   // This matches the NextJS implementation
   const roomName = room.name || 'Unknown';
 
-  // Get avatar from other member for direct messages
-  const avatarUrl = otherMember?.getAvatarUrl(mx?.getHomeserverUrl() || '', 96, 96, 'crop', true, false);
-  const httpAvatarUrl = avatarUrl && mx ? mx.mxcUrlToHttp(avatarUrl) || undefined : undefined;
+  // Get avatar from fallback member for direct messages, or room avatar
+  // Get MXC URL and convert to HTTP with authentication token in URL
+  const avatarUrl = mx ? getRoomAvatarUrl(mx, room, 96, true) : undefined;
 
   const getInitials = (name: string) => {
     return name
@@ -49,8 +47,8 @@ export function RoomViewHeader({
         <Text style={styles.backButtonText}>←</Text>
       </TouchableOpacity>
 
-      {httpAvatarUrl ? (
-        <Image source={{ uri: httpAvatarUrl }} style={styles.avatar} />
+      {avatarUrl ? (
+        <Image source={{ uri: avatarUrl }} style={styles.avatar} />
       ) : (
         <View style={[styles.avatar, styles.avatarPlaceholder]}>
           <Text style={styles.avatarText}>{getInitials(roomName)}</Text>
