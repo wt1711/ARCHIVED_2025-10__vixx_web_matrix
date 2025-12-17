@@ -1,8 +1,4 @@
-
-export const APP_URL = 'https://lovebird2025be.vercel.app/';
-
-export const MATRIX_WEB_URL = 'https://lovebird2025.vercel.app/';
-
+import { API_ENDPOINTS } from './constants/env';
 
 type LoginResponse = {
   message: string;
@@ -17,7 +13,7 @@ type LoginResponse = {
 };
 
 export async function apiLogin(username: string, password: string): Promise<LoginResponse> {
-  const res = await fetch(`${APP_URL}api/auth/login`, {
+  const res = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
@@ -30,7 +26,7 @@ export async function apiLogin(username: string, password: string): Promise<Logi
 }
 
 export async function apiCheckInstagram(token: string): Promise<{ isInstagramConnected: boolean }> {
-  const res = await fetch(`${APP_URL}api/instagram`, {
+  const res = await fetch(API_ENDPOINTS.INSTAGRAM.CHECK, {
     method: 'GET',
     headers: {
       Accept: 'application/json',
@@ -59,7 +55,7 @@ export type InstagramConnectPayload = {
 };
 
 export async function apiConnectInstagram(token: string, payload: InstagramConnectPayload): Promise<{ success: boolean; message: string }> {
-  const res = await fetch(`${APP_URL}api/instagram/connect`, {
+  const res = await fetch(API_ENDPOINTS.INSTAGRAM.CONNECT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

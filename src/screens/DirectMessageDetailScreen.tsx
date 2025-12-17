@@ -1,3 +1,4 @@
+/* eslint-disable no-unreachable */
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
@@ -35,8 +36,7 @@ export function DirectMessageDetailScreen({
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const mx = getMatrixClient();
-  const myUserId = mx?.getUserId();
-  const { paymentState, refreshPaymentStatus } = usePaymentVerification(myUserId || undefined);
+  const { paymentState, refreshPaymentStatus } = usePaymentVerification();
 
   useEffect(() => {
     if (!mx) {
@@ -87,6 +87,9 @@ export function DirectMessageDetailScreen({
   }, [mx, roomId]);
 
   const handleAIAssistantClick = useCallback(() => {
+    // Ignore for now 
+      return;
+
     console.log('🤖 AI Assistant clicked - Payment state:', {
       hasPaid: paymentState.hasPaid,
       isLoading: paymentState.isLoading,
@@ -170,7 +173,6 @@ export function DirectMessageDetailScreen({
         visible={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         onSuccess={handlePaymentSuccess}
-        matrixUserId={myUserId || undefined}
       />
     </SafeAreaView>
   );

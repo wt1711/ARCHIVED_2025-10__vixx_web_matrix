@@ -1,4 +1,4 @@
-import { EventTimeline, MatrixClient, MatrixEvent, MsgType, Room, RoomType } from "matrix-js-sdk";
+import { EventTimeline, MatrixClient, MatrixEvent, MsgType, Room, RoomMember, RoomType } from "matrix-js-sdk";
 import { MessageEvent, StateEvent } from "../types/matrix/room";
 
 
@@ -52,7 +52,7 @@ export const getRoomAvatarUrl = (
   export const IsBotPrivateChat = (roomName: string | undefined) => {
     if (roomName) {
       // Common bot patterns
-      const botPatterns = [/Meta bot Room/i];
+      const botPatterns = [/Meta bot Room/i, /Instagram Bot Room/i];
   
       const isBot = botPatterns.some((pattern) => pattern.test(roomName));
       if (isBot) return true;
@@ -71,5 +71,42 @@ export const getRoomAvatarUrl = (
         type === MessageEvent.RoomRedaction ||
         type === MessageEvent.Reaction) &&
       content.msgtype !== MsgType.Notice
+    );
+  };
+
+  export const getMemberAvatarMxc = (mx: MatrixClient, room: Room, userId: string): string | undefined => {
+    // const member = room.getMember(userId); // Revert back to this if needed
+    const member = room.getMember(getImpersonatedUserId(userId, room.getMembers()));
+    const avatarMxc = member?.getMxcAvatarUrl();
+    if (!avatarMxc) return undefined;
+    const avatarUrl = mx.mxcUrlToHttp(avatarMxc, 96, 96, 'crop', undefined, false, true);
+    if (!avatarUrl) return undefined;
+    return `${avatarUrl}&access_token=${mx.getAccessToken()}`;
+  };
+
+  const isUserIdMatrix = (userId: string) => !userId.includes('meta');
+
+  export const getImpersonatedUserId = (userId: string, members: RoomMember[]): string => {
+    if (members && isUserIdMatrix(userId)) {
+      return members.find((member) => member.userId === userId)?.userId || userId;
+    }
+    return userId || '';
+  };
+
+  // Reaction utilities
+  export const getReactionContent = (eventId: string, key: string, shortcode?: string) => ({
+    'm.relates_to': {
+      event_id: eventId,
+      key,
+      rel_type: 'm.annotation',
+    },
+    shortcode,
+  });
+
+  export const getEventReactions = (room: Room, eventId: string) => {
+    return room.getUnfilteredTimelineSet().relations.getChildEventsForEvent(
+      eventId,
+      'm.annotation' as any,
+      MessageEvent.Reaction
     );
   };

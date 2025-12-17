@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createMatrixClient, getMatrixClient, initMatrixClient, stopMatrixClient } from '../matrixClient';
 import { MatrixClient } from 'matrix-js-sdk';
+import { ENV } from '../constants/env';
+import { MATRIX_CREDENTIALS_KEY } from '../constants/localStorege';
 
 type MatrixSession = {
   accessToken: string;
@@ -30,7 +32,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const restoreSession = async () => {
     try {
-      const values = await AsyncStorage.getItem('matrixCredentials');
+      const values = await AsyncStorage.getItem(MATRIX_CREDENTIALS_KEY);
       console.log('values:', values);
       if (!values) {
         setIsLoading(false);
@@ -62,13 +64,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (username: string, password: string) => {
     setIsLoading(true);
     try {
-      // Use constant BASE_URL like Expo does - ensures consistent URL handling
-      // getHomeserverUrl() might return a malformed URL in React Native, so we use a constant
-      const BASE_URL = 'https://matrix.lvbrd.xyz';
+      // Use Matrix server URL from environment configuration
+      const matrixServerUrl = ENV.MATRIX_SERVER_URL;
       
       let matrixClient = getMatrixClient() as MatrixClient;
       if (!matrixClient) {
-        matrixClient = await createMatrixClient(BASE_URL);
+        matrixClient = await createMatrixClient(matrixServerUrl);
       }
       
       
@@ -78,15 +79,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         password,
       });
 
-      // Step 2: App Auth (mocked for now)
-      const appToken = 'mock-app-token';
-
-      // Step 3: Persist - use BASE_URL constant instead of getHomeserverUrl()
-      await AsyncStorage.setItem('matrixCredentials', JSON.stringify({
+      // Step 3: Persist - use Matrix server URL from environment
+      await AsyncStorage.setItem(MATRIX_CREDENTIALS_KEY, JSON.stringify({
         userId: mSession.user_id,
         deviceId: mSession.device_id,
         accessToken: mSession.access_token,
-        matrixHost: BASE_URL, // Use constant instead of getHomeserverUrl()
+        matrixHost: matrixServerUrl,
       }));
 
       // Step 4: Initialize Matrix client
@@ -94,11 +92,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         userId: mSession.user_id,
         deviceId: mSession.device_id,
         accessToken: mSession.access_token,
-        matrixHost: BASE_URL, // Use constant instead of getHomeserverUrl()
+        matrixHost: matrixServerUrl,
       });
 
       // Step 5: Update State
-      setToken(appToken);
       setMatrixToken(mSession.access_token);
       setUserId(mSession.user_id);
     } catch (error) {
@@ -114,7 +111,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // Stop Matrix client first
       stopMatrixClient();
 
-      await AsyncStorage.removeItem('matrixCredentials');
+      await AsyncStorage.removeItem(MATRIX_CREDENTIALS_KEY);
 
 
       setToken(null);

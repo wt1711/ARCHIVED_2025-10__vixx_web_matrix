@@ -7,7 +7,7 @@ import {
   Text,
   ActivityIndicator,
 } from 'react-native';
-import { Room } from 'matrix-js-sdk';
+import { EventType, MsgType, Room } from 'matrix-js-sdk';
 import { getMatrixClient } from '../../matrixClient';
 
 type RoomInputProps = {
@@ -27,8 +27,8 @@ export function RoomInput({ room }: RoomInputProps) {
     setSending(true);
 
     try {
-      await mx.sendEvent(room.roomId, 'm.room.message', {
-        msgtype: 'm.text',
+      await mx.sendEvent(room.roomId, EventType.RoomMessage, {
+        msgtype: MsgType.Text,
         body: text,
       });
     } catch (error) {
@@ -74,7 +74,7 @@ export function RoomInput({ room }: RoomInputProps) {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 20,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',

@@ -19,7 +19,7 @@ type AIAssistantModalProps = {
   room: Room;
 };
 
-export function AIAssistantModal({ visible, onClose, room }: AIAssistantModalProps) {
+export function AIAssistantModal({ visible, onClose }: AIAssistantModalProps) {
   const {
     inputValue,
     setInputValue,

@@ -91,7 +91,7 @@ export function AIAssistantProvider({ children, room, isMobile }: AIAssistantPro
   const generateInitialResponse = useCallback(async () => {
     toggleAIAssistant(true);
     await regenerateResponse();
-  }, [toggleAIAssistant]);
+  }, [toggleAIAssistant]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const regenerateResponse = useCallback(
     async (spec = {}) => {
@@ -176,9 +176,10 @@ export function AIAssistantProvider({ children, room, isMobile }: AIAssistantPro
       };
       setChatHistory((prev) => [...prev, aiResponse]);
     } catch (error) {
+      console.info('Error in handleSend:', error);
       const errorResponse: ChatMessage = {
         sender: 'ai',
-        text: 'Xin lỗi, đã có lỗi khi xử lý yêu cầu của bạn.',
+        text: 'Sorry, there was an error processing your request.',
         timestamp: Date.now(),
       };
       setChatHistory((prev) => [...prev, errorResponse]);
@@ -206,10 +207,10 @@ export function AIAssistantProvider({ children, room, isMobile }: AIAssistantPro
 
         const score = await gradeMessage({ message: text, context: roomContext });
         // Simple grade mapping
-        const getReactionGrade = (score: number) => {
-          if (score >= 80) return { emoji: '😊', grade: 'Excellent' };
-          if (score >= 60) return { emoji: '👍', grade: 'Good' };
-          if (score >= 40) return { emoji: '😐', grade: 'Average' };
+        const getReactionGrade = (newScore: number) => {
+          if (newScore >= 80) return { emoji: '😊', grade: 'Excellent' };
+          if (newScore >= 60) return { emoji: '👍', grade: 'Good' };
+          if (newScore >= 40) return { emoji: '😐', grade: 'Average' };
           return { emoji: '😕', grade: 'Needs Improvement' };
         };
         const analysis = getReactionGrade(score);

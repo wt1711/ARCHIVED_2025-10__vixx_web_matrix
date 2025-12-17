@@ -33,7 +33,7 @@ export const useDirectRooms = () => {
 
     setDirectRooms(sorted);
     setIsLoading(false);
-  }, [mx, mDirects]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mx, mDirects]);
 
   useEffect(() => {
     if (!mx) {

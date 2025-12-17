@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,50 +8,121 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
+import { stripePaymentService } from '../../services/stripePaymentService';
 import { paymentStorageService } from '../../services/paymentStorageService';
 
 type PaymentModalProps = {
   visible: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  matrixUserId?: string;
 };
 
-export function PaymentModal({ visible, onClose, onSuccess, matrixUserId }: PaymentModalProps) {
+export function PaymentModal({ visible, onClose, onSuccess }: PaymentModalProps) {
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showWebView, setShowWebView] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) {
+      // Reset state when modal closes
+      setShowWebView(false);
+      setCheckoutUrl(null);
+      setPaymentIntentId(null);
+      setError(null);
+    }
+  }, [visible]);
 
   const handlePayment = async () => {
-    if (!matrixUserId) {
-      setError('Matrix User ID is required');
-      return;
-    }
-
     setProcessing(true);
     setError(null);
 
     try {
-      // In a real implementation, you would integrate with a payment provider
-      // For now, this is a placeholder
-      // You would typically:
-      // 1. Open payment provider (Stripe, PayPal, etc.)
-      // 2. Get payment ID after successful payment
-      // 3. Call validateAndStorePayment
 
-      // Example flow:
-      // const paymentId = await initiatePayment(); // Your payment integration
-      // await paymentStorageService.validateAndStorePayment(matrixUserId, paymentId);
+      // Create payment intent
+      const { paymentIntentId: intentId } = 
+        await stripePaymentService.createAIAssistancePayment();
       
-      // For demo purposes, we'll simulate a successful payment
-      setTimeout(() => {
-        setProcessing(false);
-        onSuccess();
-      }, 2000);
+      setPaymentIntentId(intentId);
+
+      // For React Native, we'll use Stripe Checkout in a WebView
+      // The backend should provide a checkout URL
+      // In a real implementation, your backend should return a checkout session URL
+      
+      // Alternative: Use Stripe's hosted checkout
+      // This requires your backend to create a Checkout Session
+      // For now, we'll show a message that payment integration is in progress
+      
+      setProcessing(false);
+      setError('Payment integration: Please implement Stripe Checkout Session creation in your backend API');
+      
+      // TODO: Once backend provides checkout URL, uncomment:
+      // setCheckoutUrl(checkoutSessionUrl);
+      // setShowWebView(true);
+      
     } catch (err) {
       setProcessing(false);
-      setError(err instanceof Error ? err.message : 'Payment failed');
+      setError(err instanceof Error ? err.message : 'Failed to initiate payment');
     }
   };
+
+  const handleWebViewNavigation = (navState: any) => {
+    const { url } = navState;
+    
+    // Check if payment was successful
+    if (url.includes('payment-success') || url.includes('success')) {
+      handlePaymentSuccess();
+    } else if (url.includes('payment-cancel') || url.includes('cancel')) {
+      setShowWebView(false);
+      setError('Payment was cancelled');
+    }
+  };
+
+  const handlePaymentSuccess = async () => {
+    try {
+      if (!paymentIntentId) {
+        throw new Error('Payment intent ID is missing');
+      }
+
+      // Validate and store payment
+      await paymentStorageService.validateAndStorePayment(
+        paymentIntentId,
+        paymentIntentId // Using paymentIntentId as stripePaymentIntentId
+      );
+
+      setShowWebView(false);
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to complete payment');
+    }
+  };
+
+  if (showWebView && checkoutUrl) {
+    return (
+      <Modal
+        visible={visible}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={onClose}
+      >
+        <View style={styles.webViewContainer}>
+          <View style={styles.webViewHeader}>
+            <Text style={styles.webViewTitle}>Complete Payment</Text>
+            <TouchableOpacity onPress={() => setShowWebView(false)} style={styles.closeButton}>
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <WebView
+            source={{ uri: checkoutUrl }}
+            onNavigationStateChange={handleWebViewNavigation}
+            style={styles.webView}
+          />
+        </View>
+      </Modal>
+    );
+  }
 
   return (
     <Modal
@@ -71,7 +142,7 @@ export function PaymentModal({ visible, onClose, onSuccess, matrixUserId }: Paym
 
           <ScrollView style={styles.content}>
             <Text style={styles.description}>
-              To access AI Assistant features, a payment is required.
+              To access AI Assistant features, a one-time payment of $9.99 is required.
             </Text>
 
             <View style={styles.featuresList}>
@@ -79,6 +150,11 @@ export function PaymentModal({ visible, onClose, onSuccess, matrixUserId }: Paym
               <Text style={styles.featureItem}>✓ Message tone analysis</Text>
               <Text style={styles.featureItem}>✓ Context-aware responses</Text>
               <Text style={styles.featureItem}>✓ Real-time message grading</Text>
+            </View>
+
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceLabel}>Price:</Text>
+              <Text style={styles.price}>$9.99</Text>
             </View>
 
             {error && (
@@ -191,6 +267,48 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#666',
     fontSize: 16,
+  },
+  webViewContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  webViewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    paddingTop: 50,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#fff',
+  },
+  webViewTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  webView: {
+    flex: 1,
+  },
+  priceContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    marginBottom: 24,
+  },
+  priceLabel: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  price: {
+    fontSize: 24,
+    color: '#E4405F',
+    fontWeight: 'bold',
   },
 });
 

@@ -14,6 +14,7 @@ import { Room } from 'matrix-js-sdk';
 import { useDirectRooms } from '../hooks/useDirectRooms';
 import { getMatrixClient } from '../matrixClient';
 import { getRoomAvatarUrl } from '../utils/room';
+import { useAuth } from '../context/AuthContext';
 
 type DirectMessageListScreenProps = {
   onSelectRoom: (roomId: string) => void;
@@ -40,6 +41,7 @@ export function DirectMessageListScreen({
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
   const mx = getMatrixClient();
+  const { logout } = useAuth();
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -191,6 +193,9 @@ export function DirectMessageListScreen({
               <Text style={styles.createButtonText}>+</Text>
             </TouchableOpacity>
           ) : null}
+          <TouchableOpacity onPress={logout} style={styles.logoutButton}>
+            <Text style={styles.logoutButtonText}>Logout</Text>
+          </TouchableOpacity>
         </View>
       </View>
       {roomItems.length === 0 ? (
@@ -254,6 +259,18 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#fff',
     fontWeight: 'bold',
+  },
+  logoutButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+  },
+  logoutButtonText: {
+    color: '#333',
+    fontSize: 14,
+    fontWeight: '600',
   },
   closeButton: {
     padding: 8,
@@ -377,4 +394,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

@@ -1,3 +1,5 @@
+import { API_ENDPOINTS } from '../constants/env';
+
 export type Message = {
   sender: string;
   text: string;
@@ -15,7 +17,7 @@ export async function getOpenAIConsultation({
   question?: string;
 }): Promise<string> {
   try {
-    const response = await fetch('https://wmaide-server.vercel.app/api/suggestion', {
+    const response = await fetch(API_ENDPOINTS.AI.SUGGESTION, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -35,7 +37,8 @@ export async function getOpenAIConsultation({
     const data = await response.json();
     return data.suggestion;
   } catch (error) {
-    return 'Xin lỗi, đã có lỗi khi lấy mẫu.';
+    console.error('Error in getOpenAIConsultation:', error);
+    return 'Sorry, there was an error fetching the suggestion.';
   }
 }
 
@@ -51,7 +54,7 @@ export async function generateResponseFromMessage({
   try {
     console.log('generateResponseFromMessage called with:', { message, context, spec });
 
-    const response = await fetch('https://wmaide-server.vercel.app/api/generate-response', {
+    const response = await fetch(API_ENDPOINTS.AI.GENERATE_RESPONSE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -84,7 +87,7 @@ export async function gradeMessage({
   context: Message[];
 }): Promise<number> {
   try {
-    const response = await fetch('https://wmaide-server.vercel.app/api/grade-response', {
+    const response = await fetch(API_ENDPOINTS.AI.GRADE_RESPONSE, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

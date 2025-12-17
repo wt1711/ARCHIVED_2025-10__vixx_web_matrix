@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, StyleSheet, StatusBar, Image, TouchableOpacity, ActivityIndicator, Text, Alert } from "react-native";
+import { View, StyleSheet, StatusBar, Image, TouchableOpacity, ActivityIndicator, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LoginInstagramModal from "../components/LoginInstagramModal";
 import { InstagramIcon } from 'lucide-react-native';
@@ -16,16 +16,15 @@ export default function Login() {
     const handleLogin = async (cookies: Record<string, string>) => {
       setIsLoading(true);
       console.log('Login with cookies:', cookies);
-      // const result = await authService.login(cookies);
-      // if (result) {
-      //   console.log('Login successful');
-      //   await restoreSession();
-      // } else {
-      //   console.log('Login failed');
-      //   Alert.alert('Login failed', 'Please try again');
-      //   return
-      // }
-      await new Promise(resolve => setTimeout(() => resolve(true), 10000));
+      const result = await authService.login(cookies);
+      if (result) {
+        console.log('Login successful');
+        await restoreSession();
+      } else {
+        console.log('Login failed');
+        setIsLoading(false);
+        return
+      }
       setOpen(false);
       setIsLoading(false);
     }
@@ -38,7 +37,7 @@ export default function Login() {
     ]}
   >
     <View
-      style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000000' }]}
+      style={[styles.loginView]}
     />
     <StatusBar barStyle="light-content" />
     <View style={styles.content}>
@@ -130,6 +129,14 @@ const styles = StyleSheet.create({
       color: '#FFFFFF',
       fontSize: 15,
       fontWeight: '700',
+    },
+    loginView: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      backgroundColor: '#000000',
     },
   });
   

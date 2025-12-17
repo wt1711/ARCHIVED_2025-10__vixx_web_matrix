@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PaymentStorageService, PaymentStatus } from '../services/paymentStorageService';
+import { PaymentStorageService, PaymentStatusResponse } from '../services/paymentStorageService';
 
 interface PaymentVerificationState {
   isLoading: boolean;
@@ -14,7 +14,7 @@ interface PaymentVerificationReturn {
   refreshPaymentStatus: () => Promise<void>;
 }
 
-export const usePaymentVerification = (userId?: string): PaymentVerificationReturn => {
+export const usePaymentVerification = (): PaymentVerificationReturn => {
   const [state, setState] = useState<PaymentVerificationState>({
     isLoading: true,
     hasPaid: false,
@@ -23,20 +23,14 @@ export const usePaymentVerification = (userId?: string): PaymentVerificationRetu
   const paymentService = PaymentStorageService.getInstance();
 
   const checkPaymentStatus = async () => {
-    return; // TODO: Implement payment verification
-    if (!userId) {
-      console.log('⚠️ No User ID provided');
-      setState(prev => ({ ...prev, isLoading: false, error: 'User ID is required' }));
-      return;
-    }
 
     try {
-      console.log('🔄 Starting payment status check for user:', userId);
+      console.log('🔄 Starting payment status check for user');
       setState(prev => ({ ...prev, isLoading: true, error: undefined }));
-      console.log('🔍 Checking payment status for user:', userId);
+      console.log('🔍 Checking payment status for user');
       console.log('🌐 Making request to payment API...');
 
-      const status: PaymentStatus = await paymentService.checkPaymentStatus(userId);
+      const status: PaymentStatusResponse = await paymentService.checkPaymentStatus();
       console.log('💰 Payment status response:', status);
 
       const newState = {
@@ -60,16 +54,15 @@ export const usePaymentVerification = (userId?: string): PaymentVerificationRetu
   };
 
   const refreshPaymentStatus = async () => {
-    console.log('🔄 refreshPaymentStatus called for user:', userId);
+    console.log('🔄 refreshPaymentStatus called for user');
     console.log('📊 Current state before refresh:', state);
     await checkPaymentStatus();
     console.log('📊 State after refresh:', state);
   };
 
   useEffect(() => {
-    console.log('🎯 useEffect triggered - matrixUserId changed to:', userId);
     checkPaymentStatus();
-  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Log state changes
   useEffect(() => {
@@ -86,15 +79,15 @@ export const usePaymentVerification = (userId?: string): PaymentVerificationRetu
 /**
  * Specific hook for AI assistance payment verification
  */
-export function useAIAssistancePayment(matrixUserId?: string) {
-  return usePaymentVerification(matrixUserId);
+export function useAIAssistancePayment() {
+  return usePaymentVerification();
 }
 
 /**
  * Hook to check if user can access AI assistance features
  */
-export function useAIAssistanceAccess(matrixUserId?: string) {
-  const paymentVerification = useAIAssistancePayment(matrixUserId);
+export function useAIAssistanceAccess() {
+  const paymentVerification = useAIAssistancePayment();
 
   return {
     ...paymentVerification,
